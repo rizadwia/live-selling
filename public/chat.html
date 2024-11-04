@@ -14,8 +14,15 @@
       margin: 0;
       padding: 0;
     }
+    #statusIndicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 10px;
+    }
     #usernameContainer, #inputContainer {
       display: flex;
+      align-items: center;
       padding: 0.5em;
       background-color: #fafafa;
       border-bottom: 1px solid #ddd;
@@ -27,7 +34,7 @@
       border: 1px solid #ddd;
       border-radius: 5px;
     }
-    #setUsernameButton, #sendButton {
+    #connectButton, #sendButton {
       padding: 0.5em 1em;
       font-size: 1em;
       border: none;
@@ -36,10 +43,15 @@
       border-radius: 5px;
       cursor: pointer;
     }
-    #setUsernameButton:hover, #sendButton:hover {
+    #connectButton:hover, #sendButton:hover {
       background-color: #0056b3;
     }
-    #setUsernameButton:disabled, #sendButton:disabled {
+    #connectionCount {
+      font-size: 0.9em;
+      color: #555;
+      margin-left: auto;
+    }
+    #sendButton:disabled {
       background-color: #ddd;
     }
     #chatContainer {
@@ -76,8 +88,10 @@
 <body>
   <!-- Username input container -->
   <div id="usernameContainer">
+    <div id="statusIndicator" style="background-color: red;"></div>
     <input type="text" id="usernameInput" placeholder="Enter your username" />
-    <button id="setUsernameButton">Set Username</button>
+    <button id="connectButton">Connect</button>
+    <span id="connectionCount">Connections: 0</span>
   </div>
 
   <div id="chatContainer"></div>
@@ -95,50 +109,76 @@
     const sendButton = document.getElementById('sendButton');
     const maxChats = 10;
     const usernameInput = document.getElementById('usernameInput');
-    const setUsernameButton = document.getElementById('setUsernameButton');
-    let username = '';
+    const connectButton = document.getElementById('connectButton');
+    const statusIndicator = document.getElementById('statusIndicator');
+    const connectionCount = document.getElementById('connectionCount');
+    let username = '', socket;
 
     // Set username and enable chat input
-    setUsernameButton.addEventListener('click', function() {
+    connectButton.addEventListener('click', function() {
       const enteredUsername = usernameInput.value.trim();
-      if (enteredUsername) {
+      if (enteredUsername && !usernameInput.disabled) {
         username = enteredUsername;
         usernameInput.disabled = true;
-        setUsernameButton.disabled = true;
+        connectButton.style.backgroundColor = '#ff0026';
+        connectButton.innerHTML = 'Disconnect';
+        statusIndicator.style.backgroundColor = 'green';
         chatInput.disabled = false;
         sendButton.disabled = false;
-      }
-    });
 
-    // Connect to socket.io server
-    const socket = io('http://localhost:3000');
-
-    // Listen for incoming messages from the server
-    let currentMsg = [];
-    socket.on('chats', function(msg) {
-      const msgs = JSON.parse(msg);
-      let diff = msgs.filter(item => !currentMsg.includes(item));
-      if(chatContainer.children.length == 0) {
-        diff = diff.slice().reverse();
-      }
-      diff.forEach(element => {
-        try {
-          const elm = JSON.parse(element);
-          const message = document.createElement('div');
-          message.classList.add('message');
-          message.textContent = elm.username +' : '+ elm.message;
-          chatContainer.insertBefore(message, chatContainer.firstChild);
-          if(chatContainer.children.length >= maxChats) {
-            chatContainer.removeChild(chatContainer.lastChild);
-            chatContainer.lastChild.style = 'opacity:0.4';
-          }
-        } catch (err) {
-          console.log(`Non JSON message ${element}!`);
+        socket = connect({host: 'localhost', port: 3000});
+      } else {
+        if(socket) {
+          socket.disconnect();
         }
-      });
-      currentMsg = msgs;
+
+        usernameInput.disabled = false;
+        connectButton.style.backgroundColor = '#007bff';
+        connectButton.innerHTML = 'Connect';
+        statusIndicator.style.backgroundColor = 'red';
+        connectionCount.innerText = 'Connections: 0';
+        chatInput.disabled = true;
+        sendButton.disabled = true;
+      }
     });
 
+    // Function to connect and listen through socket.io
+    function connect(config) {
+      // Connect to socket.io server
+      const socket = io('http://'+ config.host +':'+ config.port);
+
+      // Listen for incoming messages from the server
+      let currentMsg = [];
+      socket.on('chats', function(msg) {
+        const msgs = JSON.parse(msg);
+        let diff = msgs.filter(item => !currentMsg.includes(item));
+        if(chatContainer.children.length == 0) {
+          diff = diff.slice().reverse();
+        }
+        diff.forEach(element => {
+          try {
+            const elm = JSON.parse(element);
+            const message = document.createElement('div');
+            message.classList.add('message');
+            message.textContent = elm.username +' : '+ elm.message;
+            chatContainer.insertBefore(message, chatContainer.firstChild);
+            if(chatContainer.children.length >= maxChats) {
+              chatContainer.removeChild(chatContainer.lastChild);
+              chatContainer.lastChild.style = 'opacity:0.4';
+            }
+          } catch (err) {
+            console.log(`Non JSON message ${element}!`);
+          }
+        });
+        currentMsg = msgs;
+      });
+      socket.on('connection_count', function(msg) {
+        connectionCount.textContent = `Connections: ${msg}`;
+      });
+
+      return socket;
+    }
+    
     // Function to send message through socket.io
     function sendMessage() {
       const message = chatInput.value.trim();

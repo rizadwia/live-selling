@@ -11,6 +11,7 @@ const Redis = require('ioredis');
 
 module.exports = {
     QUEUE_KEY: 'fifo_queue',
+    COUNTER_KEY: 'counter_key',
     MAX_QUEUE: 10,
     init: (config) => {
         return new Redis(config);
@@ -32,5 +33,33 @@ module.exports = {
         } catch (err) {
             console.error('Error retrieving queue:', err);
         }
-    }
+    },
+    resetKey: async (redis) => {
+        try {
+            // Reset counter to 0
+            await redis.set(module.exports.COUNTER_KEY, 0);
+        } catch (err) {
+            console.error('Error incrementing counter:', err);
+        }
+    },
+    incrementKey: async (redis) => {
+        try {
+            // INCR to increment the counter key by 1
+            const newValue = await redis.incr(module.exports.COUNTER_KEY);
+            // console.log(`Counter incremented. New value: ${newValue}`);
+            return newValue;
+        } catch (err) {
+            console.error('Error incrementing counter:', err);
+        }
+    },
+    decrementKey: async (redis) => {
+        try {
+            // DECR to decrement the counter key by 1
+            const newValue = await redis.decr(module.exports.COUNTER_KEY);
+            // console.log(`Counter decremented. New value: ${newValue}`);
+            return newValue;
+        } catch (err) {
+            console.error('Error decrementing counter:', err);
+        }
+  }
 }
