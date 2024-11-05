@@ -34,7 +34,15 @@ module.exports = {
             console.error('Error retrieving queue:', err);
         }
     },
-    resetKey: async (redis) => {
+    getCounter: async (redis) => {
+        try {
+            // Reset counter to 0
+            return await redis.get(module.exports.COUNTER_KEY);
+        } catch (err) {
+            console.error('Error incrementing counter:', err);
+        }
+    },
+    resetCounter: async (redis) => {
         try {
             // Reset counter to 0
             await redis.set(module.exports.COUNTER_KEY, 0);
@@ -42,7 +50,7 @@ module.exports = {
             console.error('Error incrementing counter:', err);
         }
     },
-    incrementKey: async (redis) => {
+    incrementCounter: async (redis) => {
         try {
             // INCR to increment the counter key by 1
             const newValue = await redis.incr(module.exports.COUNTER_KEY);
@@ -52,7 +60,7 @@ module.exports = {
             console.error('Error incrementing counter:', err);
         }
     },
-    decrementKey: async (redis) => {
+    decrementCounter: async (redis) => {
         try {
             // DECR to decrement the counter key by 1
             const newValue = await redis.decr(module.exports.COUNTER_KEY);

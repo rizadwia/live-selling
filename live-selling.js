@@ -43,12 +43,11 @@ const redis = redisHandler.init({
   port: redisPort,
   host: redisHost
 });
-let connections = 0;
-redisHandler.resetKey(redis);
+let connections = redisHandler.getCounter(redis);
 
 io.on('connection', async (socket) => {
   logger.info('New client connected');
-  connections = await redisHandler.incrementKey(redis);
+  connections = await redisHandler.incrementCounter(redis);
   io.emit('connection_count', connections);
   
   socket.on('message', async (msg) => {
@@ -60,7 +59,7 @@ io.on('connection', async (socket) => {
 
   socket.on('disconnect', async () => {
     logger.info('Client disconnected');
-    connections = await redisHandler.decrementKey(redis);
+    connections = await redisHandler.decrementCounter(redis);
     io.emit('connection_count', connections);
   });
 });
